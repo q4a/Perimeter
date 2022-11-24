@@ -1,5 +1,7 @@
 #define WIN32_LEAN_AND_MEAN		// Exclude rarely-used stuff from Windows headers
+#ifndef USE_MESA_NINE
 #include <windows.h>
+#endif
 #include "tweaks.h"
 #include "d3dx9math.h"
 

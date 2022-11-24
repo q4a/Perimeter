@@ -1,5 +1,8 @@
 #include <cstdio>
+#include <cstring> // for memset
+#ifndef USE_MESA_NINE
 #include <windows.h>
+#endif
 #include <d3d9.h>
 #include <xerrhand.h>
 #include "d3dx9.h"
