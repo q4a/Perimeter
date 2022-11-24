@@ -81,6 +81,22 @@ IF(NOT PERIMETER_WINDOWS)
     
         SET(perimeter_LINK_LIBS ${perimeter_LINK_LIBS} ${DXVK_NATIVE_D3D9_LIB})
         INCLUDE_DIRECTORIES("${DXVK_NATIVE_INCLUDE_DIRS}")
+    ELSEIF (OPTION_MESA_NINE)
+        MESSAGE("Using Gallium Nine for native D3D9 API")
+
+        #sudo apt install libd3dadapter9-mesa-dev
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(D3D REQUIRED IMPORTED_TARGET d3d)
+
+        ADD_SUBDIRECTORY(NineNative)
+        SET(NINE_NATIVE_INCLUDE_DIRS
+            "${CMAKE_CURRENT_SOURCE_DIR}/NineNative/include"
+            "${CMAKE_CURRENT_SOURCE_DIR}/NineNative/include/D3D9"
+        )
+
+        SET(perimeter_LINK_LIBS ${perimeter_LINK_LIBS} NineNative)
+        INCLUDE_DIRECTORIES("${NINE_NATIVE_INCLUDE_DIRS}")
+        ADD_DEFINITIONS(-DUSE_MESA_NINE)
     ELSE()
         MESSAGE("Not using D3D9 API providing library")
     ENDIF()

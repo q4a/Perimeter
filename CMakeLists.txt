@@ -22,6 +22,7 @@ OPTION(OPTION_GPERFTOOLS "Link executable with gperftools for debugging" OFF)
 OPTION(OPTION_HEADLESS "Enable headless mode (no window or rendering)" OFF)
 OPTION(OPTION_DXVK "Use dxvk-native for D3D9 API in Linux" ON)
 OPTION(OPTION_FFMPEG_MOVIES "Use FFMPEG to decode ingame movies" ON)
+OPTION(OPTION_MESA_NINE "Use Gallium Nine from Mesa (without WINE) for D3D9 API" OFF)
 
 # Compiler detections
 SET(MSVC_CL_BUILD OFF)
