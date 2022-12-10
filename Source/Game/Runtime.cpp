@@ -465,8 +465,8 @@ void PerimeterSetupDisplayMode() {
 
 void PerimeterCreateWindow() {
     Uint32 window_flags = SDL_WINDOW_HIDDEN;
-#ifndef _WIN32
-    //On non Windows we use dxvk-native which uses Vulkan
+#if !defined(_WIN32) && !defined(USE_MESA_NINE)
+    //For dxvk-native use Vulkan window
     window_flags |= SDL_WINDOW_VULKAN;
 #endif
     if (terFullScreen) {
