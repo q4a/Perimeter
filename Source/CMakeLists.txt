@@ -85,16 +85,35 @@ IF(NOT PERIMETER_WINDOWS)
         MESSAGE("Using Gallium Nine for native D3D9 API")
 
         #sudo apt install libd3dadapter9-mesa-dev
-        find_package(PkgConfig REQUIRED)
-        pkg_check_modules(D3D REQUIRED IMPORTED_TARGET d3d)
+        FIND_PACKAGE(PkgConfig REQUIRED)
+        PKG_CHECK_MODULES(D3D REQUIRED IMPORTED_TARGET d3d)
 
-        ADD_SUBDIRECTORY(NineNative)
+        ExternalProject_Add(nine-native
+            GIT_REPOSITORY    https://github.com/q4a/nine-native
+            GIT_TAG           main
+            GIT_SHALLOW       ON
+            BUILD_ALWAYS      OFF
+            BUILD_BYPRODUCTS  <BINARY_DIR>/libnine-native.a
+            INSTALL_COMMAND   ""
+        )
+        ExternalProject_Get_property(nine-native SOURCE_DIR BINARY_DIR)
         SET(NINE_NATIVE_INCLUDE_DIRS
-            "${CMAKE_CURRENT_SOURCE_DIR}/NineNative/include"
-            "${CMAKE_CURRENT_SOURCE_DIR}/NineNative/include/D3D9"
+            "${SOURCE_DIR}/include"
+            "${SOURCE_DIR}/include/D3D9"
+            "${SOURCE_DIR}/include/windows"
+        )
+        SET(NINE_NATIVE_D3D9_LIBS
+            "${BINARY_DIR}/libnine-native.a"
+            "PkgConfig::D3D"
+            X11
+            xcb
+            xcb-present
+            xcb-dri3
+            xcb-xfixes
+            X11-xcb
         )
 
-        SET(perimeter_LINK_LIBS ${perimeter_LINK_LIBS} NineNative)
+        SET(perimeter_LINK_LIBS ${perimeter_LINK_LIBS} ${NINE_NATIVE_D3D9_LIBS})
         INCLUDE_DIRECTORIES("${NINE_NATIVE_INCLUDE_DIRS}")
         ADD_DEFINITIONS(-DUSE_MESA_NINE)
     ELSE()
@@ -368,6 +387,8 @@ IF(NOT PERIMETER_WINDOWS)
     #Make Exodus D3D9 depend on lib that provides D3D9 API
     IF (OPTION_DXVK)
         ADD_DEPENDENCIES(ExodusD3D9 dxvk-native)
+    ELSEIF (OPTION_MESA_NINE)
+        ADD_DEPENDENCIES(ExodusD3D9 nine-native)
     ENDIF()
     IF (NOT OPTION_HEADLESS)
         #Make other modules depend on Exodus D3D9
