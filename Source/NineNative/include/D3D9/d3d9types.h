@@ -23,135 +23,6 @@
 #ifndef _D3D9TYPES_H_
 #define _D3D9TYPES_H_
 
-#ifdef _WIN32
-#include <windows.h>
-#else /* _WIN32 */
-#include <stdint.h>
-
-#ifndef NULL
-#define NULL 0
-#endif
-
-/********************************************************
- * Windows types                                        *
- ********************************************************/
-/* Function macros */
-#define FAILED(x)    ((HRESULT)(x) < 0)
-#define SUCCEEDED(x) ((HRESULT)(x) >= 0)
-
-#define MAKE_HRESULT(sev,fac,code) \
-    ( \
-        ((HRESULT)(sev) << 31) | \
-        ((HRESULT)(fac) << 16) | \
-         (HRESULT)(code) \
-    )
-
-/* Windows errors */
-#define E_OUTOFMEMORY MAKE_HRESULT(1, 0x007, 14)
-#define E_INVALIDARG  MAKE_HRESULT(1, 0x007, 0x0057)
-#define E_NOTIMPL     MAKE_HRESULT(1, 0x000, 0x4001)
-#define E_NOINTERFACE MAKE_HRESULT(1, 0x000, 0x4002)
-#define E_POINTER     MAKE_HRESULT(1, 0x000, 0x4003)
-#define E_FAIL        MAKE_HRESULT(1, 0x000, 0x4005)
-
-#define S_OK          ((HRESULT)0)
-#define S_FALSE       ((HRESULT)1)
-
-/* WORD types */
-typedef uint8_t BYTE;
-typedef uint16_t WORD;
-typedef uint32_t DWORD;
-
-/* Renamed types */
-typedef int BOOL;
-#ifndef FALSE
-#define FALSE 0
-#define TRUE (!FALSE)
-#endif
-
-typedef uint32_t UINT32;
-typedef uint64_t UINT64;
-
-typedef unsigned short USHORT;
-typedef unsigned int UINT;
-typedef unsigned int ULONG;
-typedef unsigned long long ULONGLONG;
-
-typedef short SHORT;
-typedef int INT;
-typedef int LONG;
-typedef long long LONGLONG;
-typedef float FLOAT;
-
-/* Windows types */
-typedef void *HANDLE;
-typedef int32_t HRESULT;
-typedef HANDLE HWND;
-typedef HANDLE HMONITOR;
-typedef HANDLE HDC;
-
-/* Unions */
-typedef union {
-    struct {
-        DWORD LowPart;
-        LONG HighPart;
-    };
-
-    struct {
-        DWORD LowPart;
-        LONG HighPart;
-    } u;
-
-    LONGLONG QuadPart;
-} LARGE_INTEGER, *LPLARGE_INTEGER;
-
-/* Structs */
-
-typedef struct _GUID {
-    DWORD Data1;
-    WORD Data2;
-    WORD Data3;
-    BYTE Data4[8];
-} GUID, IID, *LPGUID, *REFGUID, *REFIID;
-
-typedef struct _LUID {
-    DWORD LowPart;
-    LONG HighPart;
-} LUID, *LPLUID, *PLUID;
-
-typedef struct _PALETTEENTRY {
-    BYTE peRed;
-    BYTE peGreen;
-    BYTE peBlue;
-    BYTE peFlags;
-} PALETTEENTRY, *LPPALETTEENTRY;
-
-typedef struct _POINT {
-    LONG x;
-    LONG y;
-} POINT, *LPPOINT;
-
-typedef struct _RECT {
-    LONG left;
-    LONG top;
-    LONG right;
-    LONG bottom;
-} RECT, *LPRECT;
-
-typedef struct _RGNDATAHEADER {
-    DWORD dwSize;
-    DWORD iType;
-    DWORD nCount;
-    DWORD nRgnSize;
-    RECT rcBound;
-} RGNDATAHEADER, *LPRGNDATAHEADER;
-
-typedef struct _RGNDATA {
-    RGNDATAHEADER rdh;
-    char Buffer[1];
-} RGNDATA, *LPRGNDATA;
-#endif /* _WIN32 */
-
 #ifndef MAKEFOURCC
 #define MAKEFOURCC(a, b, c, d) \
     ( \
@@ -175,17 +46,6 @@ typedef struct _RGNDATA {
 #define D3DPRESENTFLAG_RESTRICTED_CONTENT              0x00000400
 #define D3DPRESENTFLAG_RESTRICT_SHARED_RESOURCE_DRIVER 0x00000800
 
-/* Windows calling convention */
-#ifndef WINAPI
-  #if defined(__x86_64__) && !defined(__ILP32__)
-    #define WINAPI __attribute__((ms_abi))
-  #elif defined(__i386__)
-    #define WINAPI __attribute__((__stdcall__))
-  #else /* neither amd64 nor i386 */
-    #define WINAPI
-  #endif
-#endif /* WINAPI */
-
 /* Implementation caps */
 #define D3DPRESENT_BACK_BUFFERS_MAX    3
 #define D3DPRESENT_BACK_BUFFERS_MAX_EX 30
@@ -199,7 +59,10 @@ typedef struct _RGNDATA {
 
 /* Adapter */
 #define D3DADAPTER_DEFAULT 0
-#define D3DSGR_NO_CALIBRATION 0x00000000
+
+/* IDirect3DDevice9::SetGammaRamp flags */
+#define D3DSGR_NO_CALIBRATION            0x00000000
+#define D3DSGR_CALIBRATE                 0x00000001
 
 /********************************************************
  * Return codes                                         *
@@ -269,6 +132,14 @@ typedef struct _RGNDATA {
 #define D3DUSAGE_NONSECURE                       0x00800000
 #define D3DUSAGE_TEXTAPI                         0x10000000
 #endif
+
+#define D3DWRAP_U        1
+#define D3DWRAP_V        2
+#define D3DWRAP_W        4
+#define D3DWRAPCOORD_0   1
+#define D3DWRAPCOORD_1   2
+#define D3DWRAPCOORD_2   4
+#define D3DWRAPCOORD_3   8
 
 /* Buffer locking */
 /* http://msdn.microsoft.com/en-us/library/ee416503(VS.85).aspx */
