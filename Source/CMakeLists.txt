@@ -92,9 +92,10 @@ IF(NOT PERIMETER_WINDOWS)
         SET(NINE_NATIVE_INCLUDE_DIRS
             "${CMAKE_CURRENT_SOURCE_DIR}/NineNative/include"
             "${CMAKE_CURRENT_SOURCE_DIR}/NineNative/include/D3D9"
+            "${CMAKE_CURRENT_SOURCE_DIR}/NineNative/include/windows"
         )
 
-        SET(perimeter_LINK_LIBS ${perimeter_LINK_LIBS} NineNative)
+        SET(perimeter_LINK_LIBS ${perimeter_LINK_LIBS} nine-native)
         INCLUDE_DIRECTORIES("${NINE_NATIVE_INCLUDE_DIRS}")
         ADD_DEFINITIONS(-DUSE_MESA_NINE)
     ELSE()
