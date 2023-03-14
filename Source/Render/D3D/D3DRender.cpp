@@ -1,9 +1,6 @@
 #include "StdAfxRD.h"
 #include "Font.h"
 #include "files/files.h"
-#ifdef USE_MESA_NINE
-#include "nine_sdl.h"
-#endif
 
 int sVertexXYZ::fmt		=	D3DFVF_XYZ;
 int sVertexXYZD::fmt	=	D3DFVF_XYZ|D3DFVF_DIFFUSE;
@@ -135,11 +132,7 @@ bool cD3DRender::CheckDeviceType(int xscr,int yscr,int Mode)
 	if(!lpD3D)
 	{
 		//lpD3D=Direct3DCreate9(D3D9b_SDK_VERSION);//Временно, когда появится специфичное для 9.0c переправить обратно
-#ifdef USE_MESA_NINE
-		lpD3D=Direct3DCreate9_SDL(static_cast<SDL_Window *>(hWnd));
-#else
 		lpD3D=Direct3DCreate9(D3D_SDK_VERSION);
-#endif
 		if(!lpD3D)
 			return false;
 	}
@@ -181,11 +174,7 @@ int cD3DRender::Init(int xscr,int yscr,int Mode,void *lphWnd,int RefreshRateInHz
 	RenderMode=Mode;
 
 	if(!lpD3D)
-#ifdef USE_MESA_NINE
-		RDERR((lpD3D=Direct3DCreate9_SDL(static_cast<SDL_Window *>(lphWnd)))==0);
-#else
 		RDERR((lpD3D=Direct3DCreate9(D3D_SDK_VERSION))==0);
-#endif
 		//RDERR((lpD3D=Direct3DCreate9(D3D9b_SDK_VERSION))==0);
 		
 	if(lpD3D==0) return 2;

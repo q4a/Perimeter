@@ -3,12 +3,8 @@
 #include "tweaks.h"
 
 #ifndef PERIMETER_HEADLESS
-#ifdef USE_MESA_NINE
-#include <d3d9types.h>
-#else
 #define WIN32_LEAN_AND_MEAN		// Exclude rarely-used stuff from Windows headers
 #include <windows.h>
-#endif
 #endif
 
 #include "StdAfx.h"
