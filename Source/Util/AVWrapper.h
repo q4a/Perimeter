@@ -111,10 +111,8 @@ protected:
     int swsHeight = 0;
     ///Software scaler output frame format
     AVPixelFormat swsFormat = AV_PIX_FMT_NONE;
-    ///Audio converter output channels
-    int swrChannels = 0;
     ///Audio converter output channel layout
-    int64_t swrChannelLayout = 0;
+    AVChannelLayout swrChannelLayout = {};
     ///Audio converter output rate
     int swrSampleRate = 0;
     ///Audio converter output format

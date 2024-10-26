@@ -25,7 +25,7 @@ size_t AVWrapperFrame::getBufferSize() const {
     } else if (AVWrapperType::Audio) {
         AVSampleFormat format = static_cast<AVSampleFormat>(frame->format);
         //return av_samples_get_buffer_size(nullptr, frame->channels, frame->nb_samples, format, 1);
-        int planes = av_sample_fmt_is_planar(format) ? frame->channels : 1;
+        int planes = av_sample_fmt_is_planar(format) ? frame->ch_layout.nb_channels : 1;
         return frame->linesize[0] * planes;
     } else {
         xassert(0);
@@ -49,9 +49,9 @@ size_t AVWrapperFrame::copyBuffer(uint8_t** buffer) const {
         return buffer_size;
     } else if (AVWrapperType::Audio) {
         AVSampleFormat format = static_cast<AVSampleFormat>(frame->format);
-        if (av_sample_fmt_is_planar(format) && 1 < frame->channels) {
+        if (av_sample_fmt_is_planar(format) && 1 < frame->ch_layout.nb_channels) {
             //We need to pack planar audio
-            int planes = frame->channels;
+            int planes = frame->ch_layout.nb_channels;
             size_t bytes_sample = av_get_bytes_per_sample(format);
             xassert(buffer_size == frame->linesize[0] * planes);
             //Store each plane sample as interleaved
@@ -120,8 +120,7 @@ int AVWrapper::close() {
     if (filterGraph) {
         avfilter_graph_free(&filterGraph);
     }
-    swrChannels = 0;
-    swrChannelLayout = 0;
+    swrChannelLayout = {};
     swrSampleRate = 0;
     swrFormat = AV_SAMPLE_FMT_NONE;
 #endif
@@ -163,9 +162,8 @@ void AVWrapper::pullFilterAudio() {
             break;
         }
 
-        int nb_channels = av_get_channel_layout_nb_channels(swrChannelLayout);
         int bytes_per_sample = av_get_bytes_per_sample(swrFormat);
-        int data_size = converted->frame->nb_samples * nb_channels * bytes_per_sample;
+        int data_size = converted->frame->nb_samples * swrChannelLayout.nb_channels * bytes_per_sample;
         converted->frame->linesize[0] = data_size;
         converted->type = AVWrapperType::Audio;
         converted->time_base = av_buffersink_get_time_base(buffersinkCtx);
@@ -339,8 +337,8 @@ bool AVWrapper::setupAudioConverter(AVSampleFormat dst_format, int dst_channels,
     }
 #ifdef PERIMETER_FFMPEG_MOVIE
     swrFormat = dst_format != 0 ? dst_format : audioCodecCtx->sample_fmt;
-    swrChannels = dst_channels != 0 ? dst_channels : audioCodecCtx->channels;
-    swrChannelLayout = swrChannels == 0 ? 0 : av_get_default_channel_layout(swrChannels);
+    int num_channel = dst_channels != 0 ? dst_channels : audioCodecCtx->ch_layout.nb_channels;
+    av_channel_layout_default(&swrChannelLayout, num_channel);
     swrSampleRate = dst_frequency != 0 ? dst_frequency : audioCodecCtx->sample_rate;
     if (swrFormat == AV_SAMPLE_FMT_NONE) {
         fprintf(stderr, "setupAudioConverter unsupported device output format %d at %s\n", dst_format, file_path.c_str());
@@ -353,23 +351,17 @@ bool AVWrapper::setupAudioConverter(AVSampleFormat dst_format, int dst_channels,
     AVFilterInOut *outputs = avfilter_inout_alloc();
     AVFilterInOut *inputs  = avfilter_inout_alloc();
     const int out_sample_fmts[] = { swrFormat, -1 };
-    const int64_t out_channel_layouts[] = { swrChannelLayout, -1 };
     const int out_sample_rates[] = { swrSampleRate, -1 };
     const AVFilterLink *outlink;
     AVRational time_base = audioCodecCtx->time_base;
 
-    if (!audioCodecCtx->channel_layout) {
-        audioCodecCtx->channel_layout = av_get_default_channel_layout(audioCodecCtx->channels);
-    }
-
     char channel_str[128];
-    snprintf(channel_str, sizeof(channel_str), "0x%" PRIx64, audioCodecCtx->channel_layout);
+    av_channel_layout_describe(&swrChannelLayout, channel_str, sizeof(channel_str));
     std::string args = "time_base=" + std::to_string(time_base.num) + "/" + std::to_string(time_base.den) +
                        ":sample_rate=" + std::to_string(audioCodecCtx->sample_rate) +
                        ":sample_fmt=" + av_get_sample_fmt_name(audioCodecCtx->sample_fmt) +
                        ":channel_layout=" + channel_str;
 
-    av_get_channel_layout_string(channel_str, sizeof(channel_str), swrChannels, swrChannelLayout);
     std::string filters_descr;
 
     //Add aresample filter if sample rates mismatch
@@ -381,11 +373,17 @@ bool AVWrapper::setupAudioConverter(AVSampleFormat dst_format, int dst_channels,
         filters_descr += ":min_hard_comp=0.5";
         filters_descr += ":async=" + std::to_string(swrSampleRate / 2);
     } 
-    //Convert into SDL audio format
-    if (!filters_descr.empty()) filters_descr += ",";
-    filters_descr += std::string("aformat=sample_fmts=") + av_get_sample_fmt_name(swrFormat) + ":channel_layouts=" + channel_str;
 
     int ret = 0;
+
+    //Convert into SDL audio format
+    if (!filters_descr.empty()) filters_descr += ",";
+    const char* swrFormatName = av_get_sample_fmt_name(swrFormat);
+    if (!swrFormatName) {
+        fprintf(stderr, "setupAudioConverter not enough memory\n");
+        goto end;
+    }
+    filters_descr += std::string("aformat=sample_fmts=") + swrFormatName + ":channel_layouts=" + channel_str;
 
     filterGraph = avfilter_graph_alloc();
     if (!outputs || !inputs || !filterGraph) {
@@ -396,32 +394,32 @@ bool AVWrapper::setupAudioConverter(AVSampleFormat dst_format, int dst_channels,
     /* buffer audio source: the decoded frames from the decoder will be inserted here. */
     ret = avfilter_graph_create_filter(&buffersrcCtx, abuffersrc, "in", args.c_str(), nullptr, filterGraph);
     if (ret < 0) {
-        fprintf(stderr, "Cannot create audio buffer source\n");
+        fprintf(stderr, "setupAudioConverter Cannot create audio buffer source\n");
         goto end;
     }
 
     /* buffer audio sink: to terminate the filter chain. */
     ret = avfilter_graph_create_filter(&buffersinkCtx, abuffersink, "out", nullptr, nullptr, filterGraph);
     if (ret < 0) {
-        fprintf(stderr, "Cannot create audio buffer sink\n");
+        fprintf(stderr, "setupAudioConverter Cannot create audio buffer sink\n");
         goto end;
     }
 
     ret = av_opt_set_int_list(buffersinkCtx, "sample_fmts", out_sample_fmts, -1, AV_OPT_SEARCH_CHILDREN);
     if (ret < 0) {
-        fprintf(stderr, "Cannot set output sample format\n");
+        fprintf(stderr, "setupAudioConverter Cannot set output sample format\n");
         goto end;
     }
 
-    ret = av_opt_set_int_list(buffersinkCtx, "channel_layouts", out_channel_layouts, -1, AV_OPT_SEARCH_CHILDREN);
+    ret = av_opt_set(buffersinkCtx, "ch_layouts", channel_str, AV_OPT_SEARCH_CHILDREN);
     if (ret < 0) {
-        fprintf(stderr, "Cannot set output channel layout\n");
+        fprintf(stderr, "setupAudioConverter Cannot set output channel layout\n");
         goto end;
     }
 
     ret = av_opt_set_int_list(buffersinkCtx, "sample_rates", out_sample_rates, -1, AV_OPT_SEARCH_CHILDREN);
     if (ret < 0) {
-        fprintf(stderr, "Cannot set output sample rate\n");
+        fprintf(stderr, "setupAudioConverter Cannot set output sample rate\n");
         goto end;
     }
 
@@ -452,16 +450,19 @@ bool AVWrapper::setupAudioConverter(AVSampleFormat dst_format, int dst_channels,
     inputs->pad_idx    = 0;
     inputs->next       = nullptr;
 
-    if ((ret = avfilter_graph_parse_ptr(filterGraph, filters_descr.c_str(), &inputs, &outputs, nullptr)) < 0)
+    if ((ret = avfilter_graph_parse_ptr(filterGraph, filters_descr.c_str(), &inputs, &outputs, nullptr)) < 0) {
+        fprintf(stderr, "setupAudioConverter Error occurred at avfilter_graph_parse_ptr\n");
         goto end;
+    }
 
-    if ((ret = avfilter_graph_config(filterGraph, nullptr)) < 0)
+    if ((ret = avfilter_graph_config(filterGraph, nullptr)) < 0) {
+        fprintf(stderr, "setupAudioConverter Error occurred at avfilter_graph_config\n");
         goto end;
+    }
 
-#if 1
     /* Print summary of the sink buffer */
     outlink = buffersinkCtx->inputs[0];
-    av_get_channel_layout_string(channel_str, sizeof(channel_str), -1, outlink->channel_layout);
+    av_channel_layout_describe(&outlink->ch_layout, channel_str, sizeof(channel_str));
     fprintf(
             stdout, "AVWrapper audio conv: %s\n -> %s\n -> %dHz %s %s\n",
             args.c_str(), filters_descr.c_str(),
@@ -469,7 +470,6 @@ bool AVWrapper::setupAudioConverter(AVSampleFormat dst_format, int dst_channels,
             static_cast<char*>(av_x_if_null(av_get_sample_fmt_name(static_cast<AVSampleFormat>(outlink->format)), "?")),
             channel_str
     );
-#endif
     
     end:
     avfilter_inout_free(&inputs);
@@ -478,7 +478,7 @@ bool AVWrapper::setupAudioConverter(AVSampleFormat dst_format, int dst_channels,
         if (filterGraph) {
             avfilter_graph_free(&filterGraph);
         }
-        fprintf(stderr, "Error occurred when setting up audio conv\n");
+        fprintf(stderr, "setupAudioConverter Error occurred when setting up audio conv\n");
         xassert(0);
         return false;
     } else {

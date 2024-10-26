@@ -369,8 +369,6 @@ IF(NOT MSVC_CL_BUILD)
             -Werror=format
             #TODO remove these once code is more reasonable
             -Wno-deprecated-copy
-            #TODO hide FFMPEG deprecated API usage warning for now
-            -Wno-deprecated-declarations
     )
     IF(CLANG)
         set(PERIMETER_COMPILE_OPTIONS
