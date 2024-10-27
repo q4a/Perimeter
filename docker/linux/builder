@@ -39,6 +39,11 @@ cmake -S $WORK_DIR -B $BUILD_DIR -G Ninja \
 # Build dependencies
 ninja dependencies
 
+if [[ -n "$CUSTOM_TARGET" ]]; then
+  ninja $CUSTOM_TARGET;
+  exit 0;
+fi
+
 # Build project
 ninja
 
