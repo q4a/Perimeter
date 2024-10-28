@@ -24,9 +24,15 @@ size_t AVWrapperFrame::getBufferSize() const {
         return av_image_get_buffer_size(format, frame->width, frame->height, 1);
     } else if (AVWrapperType::Audio) {
         AVSampleFormat format = static_cast<AVSampleFormat>(frame->format);
-        //return av_samples_get_buffer_size(nullptr, frame->channels, frame->nb_samples, format, 1);
-        int planes = av_sample_fmt_is_planar(format) ? frame->ch_layout.nb_channels : 1;
-        return frame->linesize[0] * planes;
+        int channels = 1;
+        if (av_sample_fmt_is_planar(format)) {
+#if (LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 28, 100))
+            channels = frame->ch_layout.nb_channels;
+#else
+            channels = frame->channels;
+#endif
+        };
+        return frame->linesize[0] * channels;
     } else {
         xassert(0);
         return 0;
@@ -49,17 +55,24 @@ size_t AVWrapperFrame::copyBuffer(uint8_t** buffer) const {
         return buffer_size;
     } else if (AVWrapperType::Audio) {
         AVSampleFormat format = static_cast<AVSampleFormat>(frame->format);
-        if (av_sample_fmt_is_planar(format) && 1 < frame->ch_layout.nb_channels) {
+        int channels = 1;
+        if (av_sample_fmt_is_planar(format)) {
+#if (LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 28, 100))
+            channels = frame->ch_layout.nb_channels;
+#else
+            channels = frame->channels;
+#endif
+        };
+        if (1 < channels) {
             //We need to pack planar audio
-            int planes = frame->ch_layout.nb_channels;
             size_t bytes_sample = av_get_bytes_per_sample(format);
-            xassert(buffer_size == frame->linesize[0] * planes);
+            xassert(buffer_size == frame->linesize[0] * channels);
             //Store each plane sample as interleaved
             for (int si = 0; si < frame->nb_samples; ++si) {
                 size_t srcoff = si * bytes_sample;
                 xassert(srcoff + bytes_sample <= frame->linesize[0]);
-                for (int pi = 0; pi < planes; pi++) {
-                    size_t dstoff = (si * planes + pi) * bytes_sample;
+                for (int pi = 0; pi < channels; pi++) {
+                    size_t dstoff = (si * channels + pi) * bytes_sample;
                     xassert(dstoff + bytes_sample <= buffer_size);
                     memcpy(*buffer + dstoff, frame->data[pi] + srcoff, bytes_sample);
                 }
@@ -120,7 +133,12 @@ int AVWrapper::close() {
     if (filterGraph) {
         avfilter_graph_free(&filterGraph);
     }
+#if (LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 28, 100))
     swrChannelLayout = {};
+#else
+    swrChannelLayout = 0;
+    swrChannels = 0;
+#endif
     swrSampleRate = 0;
     swrFormat = AV_SAMPLE_FMT_NONE;
 #endif
@@ -162,8 +180,13 @@ void AVWrapper::pullFilterAudio() {
             break;
         }
 
+#if (LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 28, 100))
+        int nb_channels = swrChannelLayout.nb_channels;
+#else
+        int nb_channels = av_get_channel_layout_nb_channels(swrChannelLayout);
+#endif
         int bytes_per_sample = av_get_bytes_per_sample(swrFormat);
-        int data_size = converted->frame->nb_samples * swrChannelLayout.nb_channels * bytes_per_sample;
+        int data_size = converted->frame->nb_samples * nb_channels * bytes_per_sample;
         converted->frame->linesize[0] = data_size;
         converted->type = AVWrapperType::Audio;
         converted->time_base = av_buffersink_get_time_base(buffersinkCtx);
@@ -337,8 +360,13 @@ bool AVWrapper::setupAudioConverter(AVSampleFormat dst_format, int dst_channels,
     }
 #ifdef PERIMETER_FFMPEG_MOVIE
     swrFormat = dst_format != 0 ? dst_format : audioCodecCtx->sample_fmt;
+#if (LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 28, 100))
     int num_channel = dst_channels != 0 ? dst_channels : audioCodecCtx->ch_layout.nb_channels;
     av_channel_layout_default(&swrChannelLayout, num_channel);
+#else
+    swrChannels = dst_channels != 0 ? dst_channels : audioCodecCtx->channels;
+    swrChannelLayout = av_get_default_channel_layout(swrChannels);
+#endif
     swrSampleRate = dst_frequency != 0 ? dst_frequency : audioCodecCtx->sample_rate;
     if (swrFormat == AV_SAMPLE_FMT_NONE) {
         fprintf(stderr, "setupAudioConverter unsupported device output format %d at %s\n", dst_format, file_path.c_str());
@@ -356,12 +384,24 @@ bool AVWrapper::setupAudioConverter(AVSampleFormat dst_format, int dst_channels,
     AVRational time_base = audioCodecCtx->time_base;
 
     char channel_str[128];
+#if (LIBAVUTIL_VERSION_INT < AV_VERSION_INT(57, 28, 100))
+    const int64_t out_channel_layouts[] = { swrChannelLayout, -1 };
+    if (!audioCodecCtx->channel_layout) {
+        audioCodecCtx->channel_layout = av_get_default_channel_layout(audioCodecCtx->channels);
+    }
+    snprintf(channel_str, sizeof(channel_str), "0x%" PRIx64, audioCodecCtx->channel_layout);
+#else
     av_channel_layout_describe(&swrChannelLayout, channel_str, sizeof(channel_str));
+#endif
+
     std::string args = "time_base=" + std::to_string(time_base.num) + "/" + std::to_string(time_base.den) +
                        ":sample_rate=" + std::to_string(audioCodecCtx->sample_rate) +
                        ":sample_fmt=" + av_get_sample_fmt_name(audioCodecCtx->sample_fmt) +
                        ":channel_layout=" + channel_str;
 
+#if (LIBAVUTIL_VERSION_INT < AV_VERSION_INT(57, 28, 100))
+    av_get_channel_layout_string(channel_str, sizeof(channel_str), swrChannels, swrChannelLayout);
+#endif
     std::string filters_descr;
 
     //Add aresample filter if sample rates mismatch
@@ -411,7 +451,11 @@ bool AVWrapper::setupAudioConverter(AVSampleFormat dst_format, int dst_channels,
         goto end;
     }
 
+#if (LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 28, 100))
     ret = av_opt_set(buffersinkCtx, "ch_layouts", channel_str, AV_OPT_SEARCH_CHILDREN);
+#else
+    ret = av_opt_set_int_list(buffersinkCtx, "channel_layouts", out_channel_layouts, -1, AV_OPT_SEARCH_CHILDREN);
+#endif
     if (ret < 0) {
         fprintf(stderr, "setupAudioConverter Cannot set output channel layout\n");
         goto end;
@@ -419,7 +463,7 @@ bool AVWrapper::setupAudioConverter(AVSampleFormat dst_format, int dst_channels,
 
     ret = av_opt_set_int_list(buffersinkCtx, "sample_rates", out_sample_rates, -1, AV_OPT_SEARCH_CHILDREN);
     if (ret < 0) {
-        fprintf(stderr, "setupAudioConverter Cannot set output sample rate\n");
+        fprintf(stderr, "Cannot set output sample rate\n");
         goto end;
     }
 
@@ -462,7 +506,11 @@ bool AVWrapper::setupAudioConverter(AVSampleFormat dst_format, int dst_channels,
 
     /* Print summary of the sink buffer */
     outlink = buffersinkCtx->inputs[0];
+#if (LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 28, 100))
     av_channel_layout_describe(&outlink->ch_layout, channel_str, sizeof(channel_str));
+#else
+    av_get_channel_layout_string(channel_str, sizeof(channel_str), -1, outlink->channel_layout);
+#endif
     fprintf(
             stdout, "AVWrapper audio conv: %s\n -> %s\n -> %dHz %s %s\n",
             args.c_str(), filters_descr.c_str(),
