@@ -715,11 +715,12 @@ void cSokolRender::CreateCommand(VertexBuffer* vb, size_t vertices, IndexBuffer*
 
     SokolPipelineContext pipeline_context;
     pipeline_context.pipeline_type = pipelineType;
-    pipeline_context.pipeline_target = SOKOL_PIPELINE_TARGET_SWAPCHAIN;
     pipeline_context.pipeline_mode = activePipelineMode;
     pipeline_context.primitive_type = activeDrawBuffer->primitive;
     pipeline_context.vertex_fmt = vb->fmt;
-    if (activeRenderTarget == shadowMapRenderTarget) {
+    if (activeRenderTarget == nullptr) {
+        pipeline_context.pipeline_target = SOKOL_PIPELINE_TARGET_SWAPCHAIN;
+    } else if (activeRenderTarget == shadowMapRenderTarget) {
         pipeline_context.pipeline_target = SOKOL_PIPELINE_TARGET_SHADOWMAP;
         // render back-faces in shadow pass to prevent shadow acne on front-faces
         pipeline_context.pipeline_mode.cull = CULL_CCW;
