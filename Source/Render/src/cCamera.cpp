@@ -107,6 +107,7 @@ void cCamera::DrawScene()
 		RenderDevice->FlushPrimitive3D();
 		RenderDevice->SetRenderState(RS_ZFUNC,CMP_LESSEQUAL);
   		RenderDevice->SetRenderState(RS_BILINEAR,true);
+        RenderDevice->SetRenderState(RS_ALPHA_TEST_MODE, ALPHATEST_GT_0);
 	}
 
 	std::vector<cCamera*>::iterator it_c;
@@ -150,8 +151,9 @@ void cCamera::DrawScene()
 	RenderDevice->SetRenderState(RS_ZWRITEENABLE, true);
 
     uint32_t fogenable = RenderDevice->GetRenderState(RS_FOGENABLE);
-	if(GetAttribute(ATTRCAMERA_SHADOW|ATTRCAMERA_SHADOWMAP|ATTRCAMERA_SHADOW_STRENCIL))
-		RenderDevice->SetRenderState(RS_FOGENABLE,false);
+	if(GetAttribute(ATTRCAMERA_SHADOW|ATTRCAMERA_SHADOWMAP|ATTRCAMERA_SHADOW_STRENCIL)) {
+        RenderDevice->SetRenderState(RS_FOGENABLE, false);
+    }
 	
 //	if(GetAttribute(ATTRCAMERA_ZMINMAX))
 //	{
