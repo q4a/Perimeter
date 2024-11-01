@@ -133,18 +133,29 @@ void cSokolRender::DoSokolRendering() {
     ProcessRenderPass(swapchain_pass, swapchainCommands);
 }
 
+#define CMDS_COMPARE_PREV_COMMAND
 void cSokolRender::ProcessRenderPass(sg_pass& render_pass, const std::vector<SokolCommand*>& pass_commands) {
     std::string pass_group_label = "pass_";
     pass_group_label += render_pass.label;
     sg_push_debug_group(pass_group_label.c_str());
     sg_begin_pass(&render_pass);
+#ifdef PERIMETER_DEBUG
+    //printf("@@@ %s @@@\n",pass_group_label.c_str());
+#endif
 
     //Iterate each command
+#ifdef CMDS_COMPARE_PREV_COMMAND
     const SokolCommand* prev_command = nullptr;
+#ifdef DEBUG_TEST_SAME
+    int same_i = 0;
+#endif
+#endif
     const SokolCommand* command = nullptr;
     bool open_debug_group = false;
     for (size_t passcmd_i = 0; passcmd_i < pass_commands.size(); ++passcmd_i) {
+#ifdef CMDS_COMPARE_PREV_COMMAND
         prev_command = command;
+#endif
         command = pass_commands[passcmd_i];
 
         //Make/Close debug group
@@ -191,8 +202,8 @@ void cSokolRender::ProcessRenderPass(sg_pass& render_pass, const std::vector<Sok
             xxassert(0, "cSokolRender::ProcessRenderPass missing pipeline");
             continue;
         }
-        shader_funcs* shader_funcs = pipeline->context.shader_funcs;
 
+#ifdef CMDS_COMPARE_PREV_COMMAND
         bool pipeline_diff = !prev_command || prev_command->pipeline != pipeline;
         bool vs_params_diff = !prev_command || pipeline_diff
         || prev_command->vs_params_len != command->vs_params_len
@@ -209,6 +220,23 @@ void cSokolRender::ProcessRenderPass(sg_pass& render_pass, const std::vector<Sok
                 command->fs_params_len
         ));
 
+#ifdef DEBUG_TEST_SAME
+        if (prev_command && prev_command->vertex_buffer && command->vertex_buffer
+        && prev_command->pipeline == command->pipeline
+        && prev_command->base_elements == command->base_elements
+        && prev_command->indices == command->indices
+        && !fs_params_diff
+        && prev_command->vertex_buffer->res.id == command->vertex_buffer->res.id) {
+            same_i++;
+            continue;
+        } else if (0 < same_i) {
+            if (2< same_i) {
+                printf("!! Up %d\n", same_i);
+            } 
+            same_i = 0;
+        }
+#endif
+
         if (!prev_command
         || vs_params_diff || fs_params_diff
         || prev_command->vertex_buffer != command->vertex_buffer
@@ -219,7 +247,9 @@ void cSokolRender::ProcessRenderPass(sg_pass& render_pass, const std::vector<Sok
                 command->sokol_images,
                 sizeof(SokolResourceImage*) * PERIMETER_SOKOL_TEXTURES
         ))
-        ) {
+        )
+#endif
+        {
 #if defined(PERIMETER_DEBUG) && 0
             printf("id: 0x%X fmt: 0x%X vtx: %d idx: %d\n",
                    command->pipeline_id, pipeline->vertex_fmt,
@@ -300,47 +330,27 @@ void cSokolRender::ProcessRenderPass(sg_pass& render_pass, const std::vector<Sok
             sg_apply_bindings(&bindings);
             
             //Apply VS uniforms
-            SOKOL_SHADER_ID shader_id = shader_funcs->get_id();
-            const char* vs_params_name = nullptr;
-            const char* fs_params_name = nullptr;
-            switch (shader_id) {
-                case SOKOL_SHADER_ID_mesh_color_tex1:
-                case SOKOL_SHADER_ID_mesh_color_tex2:
-                    vs_params_name = "mesh_color_texture_vs_params";
-                    fs_params_name = "mesh_color_texture_fs_params";
-                    break;
-                case SOKOL_SHADER_ID_mesh_normal_tex1:
-                    vs_params_name = "mesh_normal_texture_vs_params";
-                    fs_params_name = "mesh_normal_texture_fs_params";
-                    break;
-                case SOKOL_SHADER_ID_shadow_tex1:
-                case SOKOL_SHADER_ID_shadow_normal_tex1:
-                    vs_params_name = "shadow_texture_vs_params";
-                    fs_params_name = "shadow_texture_fs_params";
-                    break;
-                case SOKOL_SHADER_ID_mesh_tex1:
-                    vs_params_name = "mesh_texture_vs_params";
-                    break;
-                case SOKOL_SHADER_ID_tile_map:
-                    vs_params_name = "tile_map_vs_params";
-                    fs_params_name = "tile_map_fs_params";
-                    break;                
-                default:
-                case SOKOL_SHADER_ID_NONE:
-                    xassert(0);
-            }
-
-            if (vs_params_name && vs_params_diff) {
-                int vs_params_slot = shader_funcs->uniformblock_slot(SG_SHADERSTAGE_VS, vs_params_name);
-                xxassert(0 <= vs_params_slot, "No vs slot found");
+#ifdef CMDS_COMPARE_PREV_COMMAND
+            if (vs_params_diff)
+#endif
+            if (0 <= pipeline->vs_params_slot) {
                 xxassert(command->vs_params, "No vs parameters set in command");
-                sg_apply_uniforms(SG_SHADERSTAGE_VS, vs_params_slot, sg_range { command->vs_params, command->vs_params_len });
+                sg_apply_uniforms(
+                        SG_SHADERSTAGE_VS,
+                        pipeline->vs_params_slot,
+                        sg_range { command->vs_params, command->vs_params_len }
+                );
             }
-            if (fs_params_name && fs_params_diff) {
-                int fs_params_slot = shader_funcs->uniformblock_slot(SG_SHADERSTAGE_FS, fs_params_name);
-                xxassert(0 <= fs_params_slot, "No fs slot found");
+#ifdef CMDS_COMPARE_PREV_COMMAND
+            if (fs_params_diff)
+#endif
+            if (0 <= pipeline->fs_params_slot) {
                 xxassert(command->fs_params, "No fs parameters set in command");
-                sg_apply_uniforms(SG_SHADERSTAGE_FS, fs_params_slot, sg_range { command->fs_params, command->fs_params_len });
+                sg_apply_uniforms(
+                        SG_SHADERSTAGE_FS,
+                        pipeline->fs_params_slot,
+                        sg_range { command->fs_params, command->fs_params_len }
+                );
             }
         }
 
@@ -834,7 +844,6 @@ void cSokolRender::CreateCommand(VertexBuffer* vb, size_t vertices, IndexBuffer*
         case SOKOL_SHADER_ID_shadow_normal_tex1: {
             auto vs_params = reinterpret_cast<shadow_texture_vs_params_t*>(cmd->vs_params);
             auto fs_params = reinterpret_cast<shadow_texture_fs_params_t*>(cmd->fs_params);
-            vs_params->un_mvp = isOrthographicProjSet ? orthoVP : (activeCommandW * activeCommandVP);
             shader_set_common_params(vs_params, fs_params);
             break;
         }

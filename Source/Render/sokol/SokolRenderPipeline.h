@@ -14,8 +14,11 @@ struct SokolPipeline {
     //Mapping of texture slots in fragment shader
     int shader_fs_texture_slot[PERIMETER_SOKOL_TEXTURES] = {};
     //Sampler slot
-    int shader_fs_sampler_slot = 0;
-    int shader_fs_shadow_sampler_slot = 0;
+    int shader_fs_sampler_slot = -1;
+    int shader_fs_shadow_sampler_slot = -1;
+    //Uniform params slots
+    int vs_params_slot = -1;
+    int fs_params_slot = -1;
     
     SokolPipeline() = default;
     ~SokolPipeline();

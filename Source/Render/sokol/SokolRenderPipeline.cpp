@@ -227,93 +227,6 @@ void cSokolRender::RegisterPipeline(SokolPipelineContext context) {
         fprintf(stderr, "RegisterPipeline: invalid shader ID pipeline '%s'\n", desc.label);
         return;
     }
-    SOKOL_SHADER_ID shader_id = context.shader_funcs->get_id();
-    switch (shader_id) {
-        case SOKOL_SHADER_ID_mesh_color_tex1:
-        case SOKOL_SHADER_ID_mesh_color_tex2:
-            if (0 > context.shader_funcs->uniformblock_slot(SG_SHADERSTAGE_VS, "mesh_color_texture_vs_params")) {
-                fprintf(stderr, "RegisterPipeline: 'mesh_color_texture_vs_params' uniform slot not found at pipeline '%s'\n", desc.label);
-                xassert(0);
-                return;
-            } else if (context.shader_funcs->uniformblock_size(SG_SHADERSTAGE_VS, "mesh_color_texture_vs_params") != sizeof(mesh_color_texture_vs_params_t)) {
-                fprintf(stderr, "RegisterPipeline: 'mesh_color_texture_vs_params' uniform size doesnt match at pipeline '%s'\n", desc.label);
-                xassert(0);
-                return;
-            } else if (0 > context.shader_funcs->uniformblock_slot(SG_SHADERSTAGE_FS, "mesh_color_texture_fs_params"))  {
-                fprintf(stderr, "RegisterPipeline: 'mesh_color_texture_fs_params' uniform slot not found at pipeline '%s'\n", desc.label);
-                xassert(0);
-                return;
-            } else if (context.shader_funcs->uniformblock_size(SG_SHADERSTAGE_FS, "mesh_color_texture_fs_params") != sizeof(mesh_color_texture_fs_params_t)) {
-                fprintf(stderr, "RegisterPipeline: 'mesh_color_texture_fs_params' uniform size doesnt match at pipeline '%s'\n", desc.label);
-                xassert(0);
-                return;
-            }
-            break;
-        case SOKOL_SHADER_ID_mesh_normal_tex1:
-            if (0 > context.shader_funcs->uniformblock_slot(SG_SHADERSTAGE_VS, "mesh_normal_texture_vs_params")) {
-                fprintf(stderr, "RegisterPipeline: 'mesh_normal_texture_vs_params' uniform slot not found at pipeline '%s'\n", desc.label);
-                xassert(0);
-                return;
-            } else if (context.shader_funcs->uniformblock_size(SG_SHADERSTAGE_VS, "mesh_normal_texture_vs_params") != sizeof(mesh_normal_texture_vs_params_t)) {
-                fprintf(stderr, "RegisterPipeline: 'mesh_normal_texture_vs_params' uniform size doesnt match at pipeline '%s'\n", desc.label);
-                xassert(0);
-                return;
-            }
-            break;
-        case SOKOL_SHADER_ID_shadow_tex1:
-        case SOKOL_SHADER_ID_shadow_normal_tex1:
-            if (0 > context.shader_funcs->uniformblock_slot(SG_SHADERSTAGE_VS, "shadow_texture_vs_params")) {
-                fprintf(stderr, "RegisterPipeline: 'shadow_texture_vs_params' uniform slot not found at pipeline '%s'\n", desc.label);
-                xassert(0);
-                return;
-            } else if (context.shader_funcs->uniformblock_size(SG_SHADERSTAGE_VS, "shadow_texture_vs_params") != sizeof(shadow_texture_vs_params_t)) {
-                fprintf(stderr, "RegisterPipeline: 'shadow_texture_vs_params' uniform size doesnt match at pipeline '%s'\n", desc.label);
-                xassert(0);
-                return;
-            } else if (0 > context.shader_funcs->uniformblock_slot(SG_SHADERSTAGE_FS, "shadow_texture_fs_params"))  {
-                fprintf(stderr, "RegisterPipeline: 'shadow_texture_fs_params' uniform slot not found at pipeline '%s'\n", desc.label);
-                xassert(0);
-                return;
-            } else if (context.shader_funcs->uniformblock_size(SG_SHADERSTAGE_FS, "shadow_texture_fs_params") != sizeof(mesh_color_texture_fs_params_t)) {
-                fprintf(stderr, "RegisterPipeline: 'shadow_texture_fs_params' uniform size doesnt match at pipeline '%s'\n", desc.label);
-                xassert(0);
-                return;
-            }
-            break;
-        case SOKOL_SHADER_ID_mesh_tex1:
-            if (0 > context.shader_funcs->uniformblock_slot(SG_SHADERSTAGE_VS, "mesh_texture_vs_params")) {
-                fprintf(stderr, "RegisterPipeline: 'mesh_texture_vs_params' uniform slot not found at pipeline '%s'\n", desc.label);
-                xassert(0);
-                return;
-            } else if (context.shader_funcs->uniformblock_size(SG_SHADERSTAGE_VS, "mesh_texture_vs_params") != sizeof(mesh_texture_vs_params_t)) {
-                fprintf(stderr, "RegisterPipeline: 'mesh_texture_vs_params' uniform size doesnt match at pipeline '%s'\n", desc.label);
-                xassert(0);
-                return;
-            }
-            break;
-        case SOKOL_SHADER_ID_tile_map:
-            if (0 > context.shader_funcs->uniformblock_slot(SG_SHADERSTAGE_VS, "tile_map_vs_params")) {
-                fprintf(stderr, "RegisterPipeline: 'tile_map_vs_params' uniform slot not found at pipeline '%s'\n", desc.label);
-                xassert(0);
-                return;
-            } else if (context.shader_funcs->uniformblock_size(SG_SHADERSTAGE_VS, "tile_map_vs_params") != sizeof(tile_map_vs_params_t)) {
-                fprintf(stderr, "RegisterPipeline: 'tile_map_vs_params' uniform size doesnt match at pipeline '%s'\n", desc.label);
-                xassert(0);
-                return;
-            } else if (0 > context.shader_funcs->uniformblock_slot(SG_SHADERSTAGE_FS, "tile_map_fs_params")) {
-                fprintf(stderr, "RegisterPipeline: 'tile_map_fs_params' uniform slot not found at pipeline '%s'\n", desc.label);
-                xassert(0);
-                return;
-            } else if (context.shader_funcs->uniformblock_size(SG_SHADERSTAGE_FS, "tile_map_fs_params") != sizeof(tile_map_fs_params_t)) {
-                fprintf(stderr, "RegisterPipeline: 'tile_map_fs_params' uniform size doesnt match at pipeline '%s'\n", desc.label);
-                xassert(0);
-                return;
-            }
-            break;
-        default:
-            fprintf(stderr, "RegisterPipeline: Unknown shader id '%d' at pipeline '%s'\n", shader_id, desc.label);
-            return;
-    }
 
     //Check for any missing slots
     if (context.vertex_fmt & VERTEX_FMT_TEX1 &&
@@ -339,7 +252,8 @@ void cSokolRender::RegisterPipeline(SokolPipelineContext context) {
     bind_vertex_fmt(context, VERTEX_FMT_NORMAL);
 
     //Created, store on our pipelines
-    //printf("RegisterPipeline: '%s' at '%d'\n", desc.label, id);
+    SOKOL_SHADER_ID shader_id = context.shader_funcs->get_id();
+    //printf("RegisterPipeline: '%s' at '%d'\n", desc.label, shader_id);
     SokolPipeline* pipeline = new SokolPipeline {
         context,
         sg_make_pipeline(desc),
@@ -353,6 +267,75 @@ void cSokolRender::RegisterPipeline(SokolPipelineContext context) {
     if (pipeline->context.vertex_fmt == 0) {
         xxassert(0, "RegisterPipeline: invalid pipeline vertex format " + std::string(desc.label));
         return;
+    }
+    const char* vs_params_name = nullptr;
+    const char* fs_params_name = nullptr;
+    size_t vs_params_size = 0;
+    size_t fs_params_size = 0;
+    switch (shader_id) {
+        case SOKOL_SHADER_ID_mesh_color_tex1:
+        case SOKOL_SHADER_ID_mesh_color_tex2:
+            vs_params_name = "mesh_color_texture_vs_params";
+            fs_params_name = "mesh_color_texture_fs_params";
+            vs_params_size = sizeof(mesh_color_texture_vs_params_t);
+            fs_params_size = sizeof(mesh_color_texture_fs_params_t);
+            break;
+        case SOKOL_SHADER_ID_mesh_normal_tex1:
+            vs_params_name = "mesh_normal_texture_vs_params";
+            fs_params_name = "mesh_normal_texture_fs_params";
+            vs_params_size = sizeof(mesh_normal_texture_vs_params_t);
+            fs_params_size = sizeof(mesh_normal_texture_fs_params_t);
+            break;
+        case SOKOL_SHADER_ID_shadow_tex1:
+        case SOKOL_SHADER_ID_shadow_normal_tex1:
+            vs_params_name = "shadow_texture_vs_params";
+            fs_params_name = "shadow_texture_fs_params";
+            vs_params_size = sizeof(shadow_texture_vs_params_t);
+            fs_params_size = sizeof(shadow_texture_fs_params_t);
+            break;
+        case SOKOL_SHADER_ID_mesh_tex1:
+            vs_params_name = "mesh_texture_vs_params";
+            vs_params_size = sizeof(mesh_texture_vs_params_t);
+            break;
+        case SOKOL_SHADER_ID_tile_map:
+            vs_params_name = "tile_map_vs_params";
+            fs_params_name = "tile_map_fs_params";
+            vs_params_size = sizeof(tile_map_vs_params_t);
+            fs_params_size = sizeof(tile_map_fs_params_t);
+            break;
+        case SOKOL_SHADER_ID_NONE:
+        default:
+            fprintf(stderr, "RegisterPipeline: Unknown shader id '%d' at pipeline '%s'\n", shader_id, desc.label);
+            break;
+    }
+
+    if (vs_params_name) {
+        pipeline->vs_params_slot = context.shader_funcs->uniformblock_slot(SG_SHADERSTAGE_VS, vs_params_name);
+        if (0 > pipeline->vs_params_slot) {
+            fprintf(stderr, "RegisterPipeline: '%s' vs uniform slot not found at pipeline '%s'\n", vs_params_name,
+                    desc.label);
+            xassert(0);
+            return;
+        } else if (context.shader_funcs->uniformblock_size(SG_SHADERSTAGE_VS, vs_params_name) != vs_params_size) {
+            fprintf(stderr, "RegisterPipeline: '%s' vs uniform size doesnt match at pipeline '%s'\n",
+                    vs_params_name, desc.label);
+            xassert(0);
+            return;
+        }
+    }
+    if (fs_params_name) {
+        pipeline->fs_params_slot = context.shader_funcs->uniformblock_slot(SG_SHADERSTAGE_FS, fs_params_name);
+        if (0 > pipeline->fs_params_slot) {
+            fprintf(stderr, "RegisterPipeline: '%s' fs uniform slot not found at pipeline '%s'\n",
+                    fs_params_name, desc.label);
+            xassert(0);
+            return;
+        } else if (context.shader_funcs->uniformblock_size(SG_SHADERSTAGE_FS, fs_params_name) != fs_params_size) {
+            fprintf(stderr, "RegisterPipeline: '%s' fs uniform size doesnt match at pipeline '%s'\n",
+                    fs_params_name, desc.label);
+            xassert(0);
+            return;
+        }
     }
     for (int i = 0; i < PERIMETER_SOKOL_TEXTURES; ++i) {
         std::string name = "un_tex" + std::to_string(i);
