@@ -414,8 +414,6 @@ void cSokolRender::DebugUISetEnable(bool state) {
     
     //If enabled and imgui_state isn't initialized, do it
     if (debugUIEnabled && imgui_state == nullptr) {
-        const simgui_desc_t simgui_desc = {};
-        simgui_setup(&simgui_desc);
         const sgimgui_desc_t sgimgui_desc = {};
         imgui_state = new sgimgui_t {};
         sgimgui_init(imgui_state, &sgimgui_desc);

@@ -261,6 +261,8 @@ int cSokolRender::Init(int xScr, int yScr, int mode, SDL_Window* wnd, int Refres
     sg_setup(&desc);
     printf("cSokolRender::Init sg_setup done\n");
 
+    const simgui_desc_t simgui_desc = {};
+    simgui_setup(&simgui_desc);
     debugUIEnabled = false;
     const char* debugUIArg = check_command_line("render_debug");
     if (debugUIArg != nullptr && debugUIArg[0]) {
