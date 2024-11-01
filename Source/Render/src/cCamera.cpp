@@ -803,47 +803,29 @@ void cCamera::DrawSortMaterial()
 
     gb_RenderDevice->BeginDrawMesh(false, use_shadow);
     gb_RenderDevice->SetSimplyMaterialMesh(cur_mat->GetFront(), &Data);
+    bool reflection = GetAttribute(ATTRCAMERA_REFLECTION);
 
-	if (GetAttribute(ATTRCAMERA_REFLECTION)) {
-        for (cMeshSortingPhase* s : ar) {
-			if(cur_mat->pBank!=s->pBank || cur_mat->channel!=s->channel ||
-				cur_mat->phase!=s->phase || cur_mat->diffuse!=s->diffuse ||
-				cur_mat->ambient!=s->ambient ||
-				cur_mat->attribute!=s->attribute) {
-				cur_mat=s;
-				cur_mat->GetMaterial(&Data);
+    for (cMeshSortingPhase* s : ar) {
+        if(cur_mat->pBank!=s->pBank || cur_mat->channel!=s->channel ||
+           cur_mat->phase!=s->phase || cur_mat->diffuse!=s->diffuse ||
+           cur_mat->ambient!=s->ambient ||
+           cur_mat->attribute!=s->attribute) {
+            cur_mat=s;
+            cur_mat->GetMaterial(&Data);
 
-                gb_RenderDevice->SetSimplyMaterialMesh(cur_mat->GetFront(), &Data);
-				//change_mat++;
-			}
+            gb_RenderDevice->SetSimplyMaterialMesh(cur_mat->GetFront(), &Data);
+            //change_mat++;
+        }
 
-			for(cObjMesh* pMesh=s->GetFront();pMesh;pMesh=pMesh->GetNextSorting()) {
-				if(pMesh->GetGlobalMatrix().trans().z<GetHReflection()) {
-                    continue;
-                }
+        for(cObjMesh* pMesh=s->GetFront();pMesh;pMesh=pMesh->GetNextSorting()) {
+            if (reflection && pMesh->GetGlobalMatrix().trans().z<GetHReflection()) {
+                continue;
+            }
 
-                gb_RenderDevice->DrawNoMaterialMesh(pMesh, &Data);
-				//draw_object++;
-			}
-		}
-	} else {
-		for (cMeshSortingPhase* s : ar) {
-			if(cur_mat->pBank!=s->pBank || cur_mat->channel!=s->channel ||
-			   cur_mat->phase!=s->phase || cur_mat->diffuse!=s->diffuse ||
-			   cur_mat->attribute!=s->attribute) {
-				cur_mat=s;
-				cur_mat->GetMaterial(&Data);
-
-                gb_RenderDevice->SetSimplyMaterialMesh(cur_mat->GetFront(), &Data);
-				//change_mat++;
-			}
-
-			for(cObjMesh* pMesh=s->GetFront();pMesh;pMesh=pMesh->GetNextSorting()) {
-                gb_RenderDevice->DrawNoMaterialMesh(pMesh, &Data);
-				//draw_object++;
-			}
-		}
-	}
+            gb_RenderDevice->DrawNoMaterialMesh(pMesh, &Data);
+            //draw_object++;
+        }
+    }
 
     gb_RenderDevice->EndDrawMesh();
 }
