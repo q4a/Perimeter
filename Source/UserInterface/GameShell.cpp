@@ -1538,29 +1538,24 @@ bool GameShell::DebugKeyPressed(sKey& Key)
 			}
 		}
 		break;
-
-/*
-	//for ATI
-	case '0'|KBD_CTRL:
+	case '0'|KBD_CTRL|KBD_SHIFT:
 		gb_VisGeneric->XorShowType(SHOW_INFO);
 		break;
-	case '1'|KBD_CTRL:
+	case '1'|KBD_CTRL|KBD_SHIFT:
 		gb_VisGeneric->XorShowType(SHOW_NORMAL);
 		break;
-	case '2'|KBD_CTRL:
+	case '2'|KBD_CTRL|KBD_SHIFT:
 		gb_VisGeneric->XorShowType(SHOW_SHADOW);
 		break;
-	case '3'|KBD_CTRL:
+	case '3'|KBD_CTRL|KBD_SHIFT:
 		gb_VisGeneric->XorShowType(SHOW_REDLECTION);
 		break;
-	case '4'|KBD_CTRL:
+	case '4'|KBD_CTRL|KBD_SHIFT:
 		gb_VisGeneric->XorShowType(SHOW_TILEMAP);
 		break;
-	case '5'|KBD_CTRL:
+	case '5'|KBD_CTRL|KBD_SHIFT:
 		gb_VisGeneric->XorShowType(SHOW_OBJECT);
 		break;
-*/		
-	//end for ATI
 	case 'Z':
 		decrSpeed();
 		break;
