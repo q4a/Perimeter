@@ -550,11 +550,11 @@ void cSokolRender::ClearPipelines() {
 
 void cSokolRender::SetCommandViewportClip(bool replace) {
     if (activeCommand.viewport && replace) {
-        free(activeCommand.viewport);
+        delete[] activeCommand.viewport;
         activeCommand.viewport = nullptr;
     }
     if (activeCommand.clip && replace) {
-        free(activeCommand.clip);
+        delete[] activeCommand.clip;
         activeCommand.clip = nullptr;
     }
     if (!activeCommand.viewport) {
@@ -732,11 +732,11 @@ void SokolCommand::CreateShaderParams() {
 
 void SokolCommand::ClearDrawData() {
     if (viewport) {
-        delete viewport;
+        delete[] viewport;
         viewport = nullptr;
     }
     if (clip) {
-        delete clip;
+        delete[] clip;
         clip = nullptr;
     }
     if (pass_action) {
